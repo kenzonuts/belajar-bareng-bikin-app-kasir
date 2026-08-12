@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/features/auth/AuthProvider';
+import { useAuth } from '@/features/auth/useAuth';
 
 export function DashboardPage() {
   const { profile, user, signOut } = useAuth();

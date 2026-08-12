@@ -20,6 +20,7 @@
     "db:seed": "pnpm --filter @kas-stock/api run db:seed",
     "db:check": "pnpm --filter @kas-stock/api run db:check",
     "db:validate": "pnpm --filter @kas-stock/api run db:validate",
+    "db:validate-auth": "pnpm --filter @kas-stock/api run db:validate-auth",
     "db:studio": "pnpm --filter @kas-stock/api run db:studio"
   },
   "devDependencies": {

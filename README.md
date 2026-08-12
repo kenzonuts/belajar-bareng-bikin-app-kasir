@@ -1,6 +1,6 @@
 # Kas + Stock Management
 
-Aplikasi web **Kas + Stock Management** dengan pendekatan **mobile-first**.
+Aplikasi web **Kas + Stock Management** dengan pendekatan **mobile-first** (brand UI: **KasFlow**).
 
 ## Tech stack
 
@@ -8,6 +8,7 @@ Aplikasi web **Kas + Stock Management** dengan pendekatan **mobile-first**.
 - **Frontend:** Vite, React, TypeScript, React Router, Tailwind CSS
 - **Backend:** Hono, TypeScript
 - **Database:** Supabase PostgreSQL + Prisma
+- **Auth:** Supabase Auth
 - **Tooling:** ESLint, Prettier
 
 ## Prerequisites
@@ -45,47 +46,45 @@ Jangan commit file `.env`. Jangan pernah memasang `SUPABASE_SERVICE_ROLE_KEY` di
 
 ## Database (Supabase)
 
-Generate Prisma Client:
-
 ```bash
 pnpm db:generate
-```
-
-Terapkan migration ke Supabase:
-
-```bash
 pnpm db:migrate
-```
-
-Seed data development (bukan production):
-
-```bash
 pnpm db:seed
-```
-
-Cek koneksi & validasi schema:
-
-```bash
 pnpm db:check
 pnpm db:validate
-```
-
-Reset database development (hapus data + jalankan ulang migration & seed):
-
-```bash
-pnpm db:reset
+pnpm db:validate-auth
 ```
 
 ### Schema MVP
 
 ```text
-users
+auth.users
+    │
+    ▼
+public.users (profile, no password)
  ├── categories
  │     └── stock_items
  └── transactions  (INCOME | EXPENSE)
 ```
 
-Row Level Security (RLS) aktif: user terautentikasi hanya mengakses data miliknya (stock melalui ownership category).
+Profile `public.users` dibuat otomatis lewat trigger saat user register di Supabase Auth.
+
+## Authentication
+
+Routes:
+
+| Path | Akses |
+| --- | --- |
+| `/login` | Public |
+| `/register` | Public |
+| `/dashboard` | Protected |
+
+Akun seed development:
+
+```text
+email: dev@kas-stock.local
+password: DevPassword123!
+```
 
 ## Menjalankan development
 
@@ -100,12 +99,6 @@ pnpm dev:web   # http://localhost:5173
 pnpm dev:api   # http://localhost:3001
 ```
 
-Health check:
-
-```bash
-curl http://localhost:3001/health
-```
-
 ## Lint, typecheck, dan build
 
 ```bash
@@ -114,4 +107,3 @@ pnpm typecheck
 pnpm format
 pnpm build
 ```
-# belajar-bareng-bikin-app-kasir
