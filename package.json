@@ -21,6 +21,7 @@
     "db:check": "pnpm --filter @kas-stock/api run db:check",
     "db:validate": "pnpm --filter @kas-stock/api run db:validate",
     "db:validate-auth": "pnpm --filter @kas-stock/api run db:validate-auth",
+    "db:validate-core": "pnpm --filter @kas-stock/api run db:validate-core",
     "db:studio": "pnpm --filter @kas-stock/api run db:studio"
   },
   "devDependencies": {
