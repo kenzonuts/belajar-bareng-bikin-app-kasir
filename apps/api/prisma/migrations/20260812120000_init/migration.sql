@@ -1,3 +1,0 @@
--- Phase 01 baseline migration
--- No business tables yet (users, categories, stock_items, transactions come in Phase 02).
--- Prisma migrations table is managed automatically.

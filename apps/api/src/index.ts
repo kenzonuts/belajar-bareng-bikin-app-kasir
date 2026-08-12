@@ -9,7 +9,8 @@ async function main() {
 
   try {
     await checkDatabaseConnection();
-    console.log('[api] database connection ok');
+    console.log('[api] Supabase PostgreSQL connection ok');
+    console.log(`[api] supabase project: ${env.SUPABASE_URL}`);
   } catch (error) {
     console.error('[api] database connection failed:', error);
     process.exit(1);

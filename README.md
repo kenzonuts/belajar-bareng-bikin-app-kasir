@@ -2,21 +2,19 @@
 
 Aplikasi web **Kas + Stock Management** dengan pendekatan **mobile-first**.
 
-Phase 01 saat ini hanya mencakup fondasi project (frontend, backend, database connection, tooling). Fitur bisnis belum dibuat.
-
 ## Tech stack
 
 - **Monorepo:** pnpm workspaces
 - **Frontend:** Vite, React, TypeScript, React Router, Tailwind CSS
 - **Backend:** Hono, TypeScript
-- **Database:** SQLite + Prisma (PostgreSQL via Docker Compose tersedia sebagai opsi)
-- **Tooling:** ESLint, Prettier, Docker Compose
+- **Database:** Supabase PostgreSQL + Prisma
+- **Tooling:** ESLint, Prettier
 
 ## Prerequisites
 
 - Node.js 20+
 - pnpm 11+
-- Docker + Docker Compose (opsional, untuk PostgreSQL)
+- Akun [Supabase](https://supabase.com) + project PostgreSQL
 
 ## Install dependencies
 
@@ -26,21 +24,26 @@ pnpm install
 
 ## Environment variables
 
-1. Salin contoh env:
+1. Salin template:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Sesuaikan nilai di `.env` jika perlu. Variabel penting:
+2. Isi nilai dari Supabase Dashboard:
 
-- `DATABASE_URL` — koneksi database (default SQLite: `file:./dev.db`)
-- `API_URL` / `VITE_API_URL` — base URL backend untuk frontend
-- `API_PORT` — port backend (default `3001`)
+| Variable | Sumber | Catatan |
+| --- | --- | --- |
+| `SUPABASE_URL` | Project Settings → API | Public |
+| `SUPABASE_ANON_KEY` | Project Settings → API | Public |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API | **Secret — server only** |
+| `DATABASE_URL` | Project Settings → Database | Session pooler URI (port 5432) |
+| `VITE_SUPABASE_URL` | sama dengan `SUPABASE_URL` | Public only |
+| `VITE_SUPABASE_ANON_KEY` | sama dengan `SUPABASE_ANON_KEY` | Public only |
 
-Jangan commit file `.env`.
+Jangan commit file `.env`. Jangan pernah memasang `SUPABASE_SERVICE_ROLE_KEY` di frontend.
 
-## Database
+## Database (Supabase)
 
 Generate Prisma Client:
 
@@ -48,33 +51,43 @@ Generate Prisma Client:
 pnpm db:generate
 ```
 
-Jalankan migration:
+Terapkan migration ke Supabase:
 
 ```bash
 pnpm db:migrate
 ```
 
-Cek koneksi database:
+Seed data development (bukan production):
 
 ```bash
-pnpm --filter @kas-stock/api run db:check
+pnpm db:seed
 ```
 
-> Catatan Phase 01: belum ada schema bisnis. Migration baseline sudah ada untuk Phase 02.
-
-### Opsi PostgreSQL (Docker)
-
-Jika Docker tersedia dan user punya akses Docker daemon:
+Cek koneksi & validasi schema:
 
 ```bash
-pnpm db:up
+pnpm db:check
+pnpm db:validate
 ```
 
-Lalu ubah `DATABASE_URL` ke PostgreSQL dan ganti `provider` di `apps/api/prisma/schema.prisma` menjadi `postgresql`.
+Reset database development (hapus data + jalankan ulang migration & seed):
+
+```bash
+pnpm db:reset
+```
+
+### Schema MVP
+
+```text
+users
+ ├── categories
+ │     └── stock_items
+ └── transactions  (INCOME | EXPENSE)
+```
+
+Row Level Security (RLS) aktif: user terautentikasi hanya mengakses data miliknya (stock melalui ownership category).
 
 ## Menjalankan development
-
-Jalankan frontend + backend sekaligus:
 
 ```bash
 pnpm dev
@@ -83,29 +96,21 @@ pnpm dev
 Atau terpisah:
 
 ```bash
-# Frontend — http://localhost:5173
-pnpm dev:web
-
-# Backend — http://localhost:3001
-pnpm dev:api
+pnpm dev:web   # http://localhost:5173
+pnpm dev:api   # http://localhost:3001
 ```
 
-Health check backend:
+Health check:
 
 ```bash
 curl http://localhost:3001/health
 ```
 
-Expected response:
-
-```json
-{ "status": "ok" }
-```
-
-## Lint, format, dan build
+## Lint, typecheck, dan build
 
 ```bash
 pnpm lint
+pnpm typecheck
 pnpm format
 pnpm build
 ```
