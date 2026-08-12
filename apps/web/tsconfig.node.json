@@ -1,0 +1,10 @@
+{
+  "extends": "@kas-stock/config/tsconfig/node.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

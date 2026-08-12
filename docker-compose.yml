@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kas-stock-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: kas
+      POSTGRES_PASSWORD: kas
+      POSTGRES_DB: kas_stock
+    volumes:
+      - kas_stock_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kas -d kas_stock"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kas_stock_pgdata:

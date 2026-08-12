@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 01: no business models yet.
+// Business tables (users, categories, stock_items, transactions) will be added in Phase 02.

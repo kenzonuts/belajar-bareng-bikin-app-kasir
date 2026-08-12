@@ -1,0 +1,27 @@
+{
+  "name": "kas-stock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kas + Stock Management — mobile-first web application",
+  "packageManager": "pnpm@11.12.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @kas-stock/web --filter @kas-stock/api run dev",
+    "dev:web": "pnpm --filter @kas-stock/web run dev",
+    "dev:api": "pnpm --filter @kas-stock/api run dev",
+    "build": "pnpm -r --filter @kas-stock/config --filter @kas-stock/api --filter @kas-stock/web run build",
+    "lint": "pnpm -r --filter @kas-stock/web --filter @kas-stock/api run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @kas-stock/api run db:migrate",
+    "db:generate": "pnpm --filter @kas-stock/api run db:generate",
+    "db:studio": "pnpm --filter @kas-stock/api run db:studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
