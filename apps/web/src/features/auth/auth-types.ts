@@ -18,10 +18,6 @@ export function mapAuthError(error: { message?: string; code?: string } | null |
     return 'Email atau password salah.';
   }
 
-  if (message.includes('email not confirmed') || code.includes('email_not_confirmed')) {
-    return 'Email belum diverifikasi. Cek kotak masuk Anda.';
-  }
-
   if (
     message.includes('user already registered') ||
     message.includes('already been registered') ||

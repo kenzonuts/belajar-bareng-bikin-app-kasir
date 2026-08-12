@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import { ApiError, apiRequest } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { AuthContext, type AuthContextValue } from './auth-context';
 import { mapAuthError, type AuthProfile, type AuthStatus } from './auth-types';
@@ -94,26 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (name: string, email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name },
-      },
-    });
-
-    if (error) {
-      return { error: mapAuthError(error), needsEmailConfirmation: false };
+    try {
+      await apiRequest('/auth/register', {
+        method: 'POST',
+        body: { name, email, password },
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { error: err.message };
+      }
+      return { error: mapAuthError({ message: err instanceof Error ? err.message : undefined }) };
     }
 
-    if (data.user && data.session) {
-      await ensureProfile(data.user, name);
-    }
-
-    return {
-      error: null,
-      needsEmailConfirmation: Boolean(data.user) && !data.session,
-    };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error ? mapAuthError(error) : null };
   }, []);
 
   const signOut = useCallback(async () => {

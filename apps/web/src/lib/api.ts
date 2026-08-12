@@ -23,14 +23,14 @@ export async function apiRequest<T>(
   path: string,
   options: {
     method?: string;
-    token: string;
+    token?: string;
     body?: unknown;
-  },
+  } = {},
 ): Promise<T> {
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     method: options.method ?? 'GET',
     headers: {
-      Authorization: `Bearer ${options.token}`,
+      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     },
     body: options.body ? JSON.stringify(options.body) : undefined,

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/Button';
+import { Field, TextInput } from '@/components/ui/Field';
 import { useAuth } from '@/features/auth/useAuth';
 
 export function LoginPage() {
@@ -12,19 +14,14 @@ export function LoginPage() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-
     if (!email.trim() || !password) {
       setError('Email dan password wajib diisi.');
       return;
     }
-
     setSubmitting(true);
     const result = await signIn(email.trim(), password);
     setSubmitting(false);
-
-    if (result.error) {
-      setError(result.error);
-    }
+    if (result.error) setError(result.error);
   }
 
   return (
@@ -36,41 +33,34 @@ export function LoginPage() {
         </header>
 
         <form className="auth-form" onSubmit={onSubmit} noValidate>
-          <label className="auth-field">
-            <span>Email</span>
-            <input
+          <Field label="Email">
+            <TextInput
               type="email"
-              name="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
               required
             />
-          </label>
-
-          <label className="auth-field">
-            <span>Password</span>
-            <input
+          </Field>
+          <Field label="Password">
+            <TextInput
               type="password"
-              name="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
             />
-          </label>
-
+          </Field>
           {error ? (
             <p className="auth-error" role="alert">
               {error}
             </p>
           ) : null}
-
-          <button className="auth-button" type="submit" disabled={submitting}>
+          <Button type="submit" block disabled={submitting}>
             {submitting ? 'Masuk...' : 'Masuk'}
-          </button>
+          </Button>
         </form>
 
         <p className="auth-footer">

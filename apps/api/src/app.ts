@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { errorHandler, requestLogger } from './middleware/error.js';
+import { authRoutes } from './routes/auth.js';
 import { categoriesRoutes } from './routes/categories.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
@@ -20,6 +21,7 @@ export function createApp() {
   );
 
   app.route('/health', healthRoutes);
+  app.route('/auth', authRoutes);
   app.route('/categories', categoriesRoutes);
   app.route('/stock', stockRoutes);
   app.route('/transactions', transactionsRoutes);

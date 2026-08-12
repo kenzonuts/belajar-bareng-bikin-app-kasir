@@ -1,25 +1,35 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppShell } from '@/components/AppShell';
-import { EmptyState } from '@/components/EmptyState';
-import { LoadingBlock } from '@/components/LoadingBlock';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Currency } from '@/components/ui/Currency';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Field, TextInput, TextArea } from '@/components/ui/Field';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
+import { useToast } from '@/features/ui/ToastProvider';
 import { apiRequest, ApiError } from '@/lib/api';
-import { formatDateId, formatRp, todayIsoDate } from '@/lib/format';
+import { formatDateId, todayIsoDate } from '@/lib/format';
 import type { Transaction } from '@/lib/types';
 
 type Filter = 'ALL' | 'INCOME' | 'EXPENSE';
-type Mode = 'list' | 'create' | 'edit';
 
 export function TransactionsPage() {
   const { session } = useAuth();
   const token = session?.access_token ?? '';
+  const { toast } = useToast();
+  const [params, setParams] = useSearchParams();
 
   const [items, setItems] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<Filter>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>('list');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('INCOME');
@@ -46,6 +56,14 @@ export function TransactionsPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const action = params.get('action');
+    if (action === 'income' || action === 'expense') {
+      openCreate(action === 'income' ? 'INCOME' : 'EXPENSE');
+      setParams({}, { replace: true });
+    }
+  }, [params, setParams]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
     for (const item of items) {
@@ -57,201 +75,196 @@ export function TransactionsPage() {
   }, [items]);
 
   function openCreate(nextType: 'INCOME' | 'EXPENSE' = 'INCOME') {
-    setMode('create');
     setEditing(null);
     setType(nextType);
     setAmount('');
     setDescription('');
     setTransactionDate(todayIsoDate());
-    setError(null);
+    setSheetOpen(true);
   }
 
   function openEdit(txn: Transaction) {
-    setMode('edit');
     setEditing(txn);
     setType(txn.type);
     setAmount(String(txn.amount));
     setDescription(txn.description ?? '');
     setTransactionDate(txn.transactionDate);
-    setError(null);
+    setSheetOpen(true);
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!token) return;
     setSubmitting(true);
-    setError(null);
     try {
-      const body = {
-        type,
-        amount: Number(amount),
-        description,
-        transactionDate,
-      };
-      if (mode === 'create') {
-        await apiRequest('/transactions', { method: 'POST', token, body });
-      } else if (editing) {
+      const body = { type, amount: Number(amount), description, transactionDate };
+      if (editing) {
         await apiRequest(`/transactions/${editing.id}`, { method: 'PATCH', token, body });
+        toast('✓ Transaksi berhasil diperbarui');
+      } else {
+        await apiRequest('/transactions', { method: 'POST', token, body });
+        toast('✓ Transaksi berhasil disimpan');
       }
-      setMode('list');
+      setSheetOpen(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal menyimpan transaksi.');
+      toast(err instanceof ApiError ? err.message : 'Gagal menyimpan transaksi.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDelete(txn: Transaction) {
-    if (!token) return;
-    const label = txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran';
-    const confirmed = window.confirm(`Hapus transaksi?\n\n${label}\n${formatRp(txn.amount)}`);
-    if (!confirmed) return;
+  async function onDelete() {
+    if (!token || !deleting) return;
+    setSubmitting(true);
     try {
-      await apiRequest(`/transactions/${txn.id}`, { method: 'DELETE', token });
+      await apiRequest(`/transactions/${deleting.id}`, { method: 'DELETE', token });
+      toast('✓ Transaksi dihapus');
+      setDeleting(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal menghapus transaksi.');
+      toast(err instanceof ApiError ? err.message : 'Gagal menghapus transaksi.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <AppShell
-      title="Transaksi"
+      title="Kas"
       action={
-        mode === 'list' ? (
-          <button type="button" className="link-button" onClick={() => openCreate('INCOME')}>
-            + Catat
-          </button>
-        ) : null
+        <Button size="sm" onClick={() => openCreate('INCOME')}>
+          + Tambah
+        </Button>
       }
     >
-      {error ? (
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
+      <div className="ui-chip-row" role="tablist" aria-label="Filter transaksi">
+        {([
+          ['ALL', 'Semua'],
+          ['INCOME', 'Pemasukan'],
+          ['EXPENSE', 'Pengeluaran'],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={filter === value ? 'ui-chip is-active' : 'ui-chip'}
+            onClick={() => setFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <ListSkeleton count={4} /> : null}
+      {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <EmptyState
+          title="Belum ada transaksi"
+          description="Catat pemasukan atau pengeluaran untuk mulai melihat aktivitas kas."
+          action={<Button onClick={() => openCreate('INCOME')}>+ Tambah Transaksi</Button>}
+        />
       ) : null}
 
-      {mode !== 'list' ? (
-        <form className="panel-form" onSubmit={onSubmit}>
-          <h2>
-            {mode === 'create'
-              ? type === 'INCOME'
-                ? 'Pemasukan'
-                : 'Pengeluaran'
-              : 'Edit Transaksi'}
-          </h2>
-          <label className="auth-field">
-            <span>Tipe</span>
-            <select value={type} onChange={(e) => setType(e.target.value as 'INCOME' | 'EXPENSE')}>
-              <option value="INCOME">Pemasukan</option>
-              <option value="EXPENSE">Pengeluaran</option>
-            </select>
-          </label>
-          <label className="auth-field">
-            <span>Nominal</span>
-            <input
+      {!loading && !error && items.length > 0 ? (
+        <div className="ui-stack">
+          {grouped.map(([date, rows]) => (
+            <section key={date} className="ui-stack">
+              <h2 className="ui-muted">{formatDateId(date)}</h2>
+              {rows.map((txn) => (
+                <article key={txn.id} className="ui-card ui-stack">
+                  <button type="button" className="list-item" onClick={() => openEdit(txn)}>
+                    <div className="list-item__meta">
+                      <span
+                        className={`list-item__title ${txn.type === 'INCOME' ? 'ui-income' : 'ui-expense'}`}
+                      >
+                        ● {txn.description || (txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran')}
+                      </span>
+                      <span className="ui-muted">{formatDateId(txn.transactionDate)}</span>
+                    </div>
+                    <Currency
+                      value={txn.amount}
+                      signed={txn.type === 'INCOME' ? 'income' : 'expense'}
+                    />
+                  </button>
+                  <div className="ui-row">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(txn)}>
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setDeleting(txn)}>
+                      Hapus
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </section>
+          ))}
+        </div>
+      ) : null}
+
+      <BottomSheet
+        open={sheetOpen}
+        title={editing ? 'Edit Transaksi' : 'Tambah Transaksi'}
+        onClose={() => setSheetOpen(false)}
+      >
+        <form className="ui-stack" onSubmit={onSubmit}>
+          <div className="segmented" role="group" aria-label="Jenis transaksi">
+            <button
+              type="button"
+              className={type === 'INCOME' ? 'is-active' : undefined}
+              onClick={() => setType('INCOME')}
+            >
+              Pemasukan
+            </button>
+            <button
+              type="button"
+              className={type === 'EXPENSE' ? 'is-active' : undefined}
+              onClick={() => setType('EXPENSE')}
+            >
+              Pengeluaran
+            </button>
+          </div>
+          <Field label="Nominal">
+            <TextInput
               type="number"
+              inputMode="decimal"
               min={1}
               step={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
+              placeholder="0"
             />
-          </label>
-          <label className="auth-field">
-            <span>Keterangan</span>
-            <input value={description} onChange={(e) => setDescription(e.target.value)} />
-          </label>
-          <label className="auth-field">
-            <span>Tanggal</span>
-            <input
+          </Field>
+          <Field label="Keterangan">
+            <TextArea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Contoh: Penjualan hari ini"
+            />
+          </Field>
+          <Field label="Tanggal">
+            <TextInput
               type="date"
               value={transactionDate}
               onChange={(e) => setTransactionDate(e.target.value)}
               required
             />
-          </label>
-          <div className="button-row">
-            <button
-              type="button"
-              className="auth-button auth-button--ghost"
-              onClick={() => setMode('list')}
-              disabled={submitting}
-            >
-              Batal
-            </button>
-            <button type="submit" className="auth-button" disabled={submitting}>
-              {submitting
-                ? 'Menyimpan...'
-                : type === 'INCOME'
-                  ? 'Simpan Pemasukan'
-                  : 'Simpan Pengeluaran'}
-            </button>
-          </div>
+          </Field>
+          <Button type="submit" block disabled={submitting}>
+            {submitting ? 'Menyimpan...' : 'Simpan'}
+          </Button>
         </form>
-      ) : (
-        <>
-          <div className="filter-row">
-            {(['ALL', 'INCOME', 'EXPENSE'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={filter === value ? 'chip is-active' : 'chip'}
-                onClick={() => setFilter(value)}
-              >
-                {value === 'ALL' ? 'Semua' : value === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}
-              </button>
-            ))}
-          </div>
+      </BottomSheet>
 
-          {loading ? (
-            <LoadingBlock label="Loading transactions..." />
-          ) : items.length === 0 ? (
-            <EmptyState
-              title="Belum ada transaksi."
-              description="Catat pemasukan atau pengeluaran pertama kamu."
-              actionLabel="+ Catat Transaksi"
-              onAction={() => openCreate('INCOME')}
-            />
-          ) : (
-            <div className="stack">
-              {grouped.map(([date, rows]) => (
-                <section key={date} className="group-section">
-                  <h2>{formatDateId(date)}</h2>
-                  <ul className="list-cards">
-                    {rows.map((txn) => (
-                      <li key={txn.id} className="list-card">
-                        <div>
-                          <strong className={txn.type === 'INCOME' ? 'income' : 'expense'}>
-                            {txn.type === 'INCOME' ? '+ ' : '- '}
-                            {txn.description || (txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran')}
-                          </strong>
-                          <p className={txn.type === 'INCOME' ? 'income' : 'expense'}>
-                            {formatRp(txn.amount)}
-                          </p>
-                        </div>
-                        <div className="button-row">
-                          <button type="button" className="link-button" onClick={() => openEdit(txn)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="link-button danger"
-                            onClick={() => void onDelete(txn)}
-                          >
-                            Hapus
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Hapus transaksi?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel={submitting ? 'Menghapus...' : 'Hapus'}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => void onDelete()}
+      />
     </AppShell>
   );
 }

@@ -8,11 +8,7 @@ export type AuthContextValue = {
   user: User | null;
   profile: AuthProfile | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (
-    name: string,
-    email: string,
-    password: string,
-  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
+  signUp: (name: string, email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
 };

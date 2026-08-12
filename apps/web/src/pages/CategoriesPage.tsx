@@ -1,25 +1,31 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { AppShell } from '@/components/AppShell';
-import { EmptyState } from '@/components/EmptyState';
-import { LoadingBlock } from '@/components/LoadingBlock';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Field, TextInput, TextArea } from '@/components/ui/Field';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
+import { useToast } from '@/features/ui/ToastProvider';
 import { apiRequest, ApiError } from '@/lib/api';
 import type { Category } from '@/lib/types';
-
-type Mode = 'list' | 'create' | 'edit';
 
 export function CategoriesPage() {
   const { session } = useAuth();
   const token = session?.access_token ?? '';
+  const { toast } = useToast();
 
   const [items, setItems] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>('list');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState<Category | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -40,60 +46,60 @@ export function CategoriesPage() {
   }, [load]);
 
   function openCreate() {
-    setMode('create');
     setEditing(null);
     setName('');
     setDescription('');
-    setError(null);
+    setSheetOpen(true);
   }
 
   function openEdit(category: Category) {
-    setMode('edit');
     setEditing(category);
     setName(category.name);
     setDescription(category.description ?? '');
-    setError(null);
+    setSheetOpen(true);
   }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!token) return;
     setSubmitting(true);
-    setError(null);
     try {
-      if (mode === 'create') {
-        await apiRequest('/categories', {
-          method: 'POST',
-          token,
-          body: { name, description },
-        });
-      } else if (editing) {
+      if (editing) {
         await apiRequest(`/categories/${editing.id}`, {
           method: 'PATCH',
           token,
           body: { name, description },
         });
+        toast('✓ Kategori berhasil diperbarui');
+      } else {
+        await apiRequest('/categories', {
+          method: 'POST',
+          token,
+          body: { name, description },
+        });
+        toast('✓ Kategori berhasil dibuat');
       }
-      setMode('list');
+      setSheetOpen(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal menyimpan kategori.');
+      toast(err instanceof ApiError ? err.message : 'Gagal menyimpan kategori.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDelete(category: Category) {
-    if (!token) return;
-    const confirmed = window.confirm(`Hapus kategori "${category.name}"?`);
-    if (!confirmed) return;
-
-    setError(null);
+  async function onDelete() {
+    if (!token || !deleting) return;
+    setSubmitting(true);
     try {
-      await apiRequest(`/categories/${category.id}`, { method: 'DELETE', token });
+      await apiRequest(`/categories/${deleting.id}`, { method: 'DELETE', token });
+      toast('✓ Kategori dihapus');
+      setDeleting(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal menghapus kategori.');
+      toast(err instanceof ApiError ? err.message : 'Gagal menghapus kategori.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -101,78 +107,78 @@ export function CategoriesPage() {
     <AppShell
       title="Kategori"
       action={
-        mode === 'list' ? (
-          <button type="button" className="link-button" onClick={openCreate}>
-            + Tambah
-          </button>
-        ) : null
+        <Button size="sm" onClick={openCreate}>
+          + Tambah
+        </Button>
       }
     >
-      {error ? (
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
+      {loading ? <ListSkeleton count={3} /> : null}
+      {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <EmptyState
+          title="Belum ada kategori"
+          description="Buat kategori pertama untuk mulai mengelola stok."
+          action={<Button onClick={openCreate}>+ Tambah Kategori</Button>}
+        />
       ) : null}
 
-      {mode !== 'list' ? (
-        <form className="panel-form" onSubmit={onSubmit}>
-          <h2>{mode === 'create' ? 'Tambah Kategori' : 'Edit Kategori'}</h2>
-          <label className="auth-field">
-            <span>Nama Kategori</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label className="auth-field">
-            <span>Deskripsi</span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </label>
-          <div className="button-row">
-            <button
-              type="button"
-              className="auth-button auth-button--ghost"
-              onClick={() => setMode('list')}
-              disabled={submitting}
-            >
-              Batal
-            </button>
-            <button type="submit" className="auth-button" disabled={submitting}>
-              {submitting ? 'Menyimpan...' : 'Simpan'}
-            </button>
-          </div>
-        </form>
-      ) : loading ? (
-        <LoadingBlock label="Loading categories..." />
-      ) : items.length === 0 ? (
-        <EmptyState
-          title="Belum ada kategori."
-          description="Buat kategori pertama untuk mulai mengelola stok."
-          actionLabel="+ Tambah Kategori"
-          onAction={openCreate}
-        />
-      ) : (
-        <ul className="list-cards">
+      {!loading && !error && items.length > 0 ? (
+        <div className="ui-stack">
           {items.map((item) => (
-            <li key={item.id} className="list-card">
-              <div>
-                <strong>{item.name}</strong>
-                <p>{item.itemCount} barang</p>
-                {item.description ? <p className="muted">{item.description}</p> : null}
+            <article key={item.id} className="ui-card">
+              <div className="list-item">
+                <div className="list-item__meta">
+                  <span className="list-item__title">{item.name}</span>
+                  <span className="ui-muted">{item.itemCount} barang</span>
+                  {item.description ? <span className="ui-muted">{item.description}</span> : null}
+                </div>
               </div>
-              <div className="button-row">
-                <button type="button" className="link-button" onClick={() => openEdit(item)}>
+              <div className="ui-row" style={{ marginTop: '0.75rem' }}>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(item)}>
                   Edit
-                </button>
-                <button type="button" className="link-button danger" onClick={() => void onDelete(item)}>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setDeleting(item)}>
                   Hapus
-                </button>
+                </Button>
               </div>
-            </li>
+            </article>
           ))}
-        </ul>
-      )}
+        </div>
+      ) : null}
+
+      <BottomSheet
+        open={sheetOpen}
+        title={editing ? 'Edit Kategori' : 'Tambah Kategori'}
+        onClose={() => setSheetOpen(false)}
+      >
+        <form className="ui-stack" onSubmit={onSubmit}>
+          <Field label="Nama">
+            <TextInput value={name} onChange={(e) => setName(e.target.value)} required />
+          </Field>
+          <Field label="Deskripsi">
+            <TextArea value={description} onChange={(e) => setDescription(e.target.value)} />
+          </Field>
+          <Button type="submit" block disabled={submitting}>
+            {submitting ? 'Menyimpan...' : 'Simpan'}
+          </Button>
+        </form>
+      </BottomSheet>
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Hapus kategori?"
+        description={
+          deleting
+            ? deleting.itemCount > 0
+              ? `Kategori "${deleting.name}" masih memiliki ${deleting.itemCount} barang. Hapus atau pindahkan barang terlebih dahulu.`
+              : 'Tindakan ini tidak dapat dibatalkan.'
+            : ''
+        }
+        confirmLabel={submitting ? 'Menghapus...' : 'Hapus'}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => void onDelete()}
+      />
     </AppShell>
   );
 }

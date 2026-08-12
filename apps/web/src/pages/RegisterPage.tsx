@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/Button';
+import { Field, TextInput } from '@/components/ui/Field';
 import { useAuth } from '@/features/auth/useAuth';
 
 export function RegisterPage() {
@@ -21,22 +23,18 @@ export function RegisterPage() {
       setError('Nama wajib diisi.');
       return;
     }
-
     if (!email.trim() || !email.includes('@')) {
       setError('Email tidak valid.');
       return;
     }
-
     if (!password) {
       setError('Password wajib diisi.');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Password dan konfirmasi password harus sama.');
       return;
     }
-
     if (password.length < 6) {
       setError('Password minimal 6 karakter.');
       return;
@@ -50,7 +48,6 @@ export function RegisterPage() {
       setError(result.error);
       return;
     }
-
     if (result.needsEmailConfirmation) {
       setInfo('Akun berhasil dibuat. Silakan verifikasi email sebelum masuk.');
     }
@@ -65,73 +62,58 @@ export function RegisterPage() {
         </header>
 
         <form className="auth-form" onSubmit={onSubmit} noValidate>
-          <label className="auth-field">
-            <span>Nama</span>
-            <input
-              type="text"
-              name="name"
+          <Field label="Nama">
+            <TextInput
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nama lengkap"
               required
             />
-          </label>
-
-          <label className="auth-field">
-            <span>Email</span>
-            <input
+          </Field>
+          <Field label="Email">
+            <TextInput
               type="email"
-              name="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
               required
             />
-          </label>
-
-          <label className="auth-field">
-            <span>Password</span>
-            <input
+          </Field>
+          <Field label="Password">
+            <TextInput
               type="password"
-              name="password"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimal 6 karakter"
               required
             />
-          </label>
-
-          <label className="auth-field">
-            <span>Konfirmasi Password</span>
-            <input
+          </Field>
+          <Field label="Konfirmasi Password">
+            <TextInput
               type="password"
-              name="confirmPassword"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Ulangi password"
               required
             />
-          </label>
-
+          </Field>
           {error ? (
             <p className="auth-error" role="alert">
               {error}
             </p>
           ) : null}
-
           {info ? (
             <p className="auth-info" role="status">
               {info}
             </p>
           ) : null}
-
-          <button className="auth-button" type="submit" disabled={submitting}>
+          <Button type="submit" block disabled={submitting}>
             {submitting ? 'Mendaftar...' : 'Daftar'}
-          </button>
+          </Button>
         </form>
 
         <p className="auth-footer">

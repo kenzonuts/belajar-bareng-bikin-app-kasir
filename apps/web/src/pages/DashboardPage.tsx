@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/AppShell';
-import { LoadingBlock } from '@/components/LoadingBlock';
+import { Button } from '@/components/ui/Button';
+import { Currency } from '@/components/ui/Currency';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
 import { apiRequest, ApiError } from '@/lib/api';
-import { formatRp } from '@/lib/format';
+import { formatDateId } from '@/lib/format';
 import type { DashboardData } from '@/lib/types';
 
 export function DashboardPage() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const token = session?.access_token ?? '';
-
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +24,7 @@ export function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiRequest<DashboardData>('/dashboard', { token });
-      setData(res);
+      setData(await apiRequest<DashboardData>('/dashboard', { token }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gagal memuat dashboard.');
     } finally {
@@ -34,83 +37,120 @@ export function DashboardPage() {
   }, [load]);
 
   return (
-    <AppShell title="Dashboard">
-      {error ? (
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {loading || !data ? (
-        <LoadingBlock label="Loading dashboard..." />
-      ) : (
-        <div className="stack">
-          <section className="stat-card stat-card--hero">
-            <p className="muted">Saldo Kas</p>
-            <p className="stat-value">{formatRp(data.balance)}</p>
+    <AppShell title="Selamat datang" subtitle={profile?.name || 'User'}>
+      {loading ? <ListSkeleton count={4} /> : null}
+      {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
+      {!loading && !error && data ? (
+        <div className="ui-stack">
+          <section className="ui-card stat-hero">
+            <p className="ui-muted">Saldo Kas</p>
+            <p className="stat-hero__value">
+              <Currency value={data.balance} />
+            </p>
+            <p className="ui-muted">
+              <span className="ui-income">
+                + <Currency value={data.income} />
+              </span>
+              {' · '}
+              <span className="ui-expense">
+                - <Currency value={data.expense} />
+              </span>
+            </p>
           </section>
 
           <section className="stat-grid">
-            <div className="stat-card">
-              <p className="muted">Pemasukan</p>
-              <p className="income">{formatRp(data.income)}</p>
+            <div className="ui-card ui-card--flat">
+              <p className="ui-muted">Pemasukan</p>
+              <p className="ui-income">
+                <Currency value={data.income} />
+              </p>
             </div>
-            <div className="stat-card">
-              <p className="muted">Pengeluaran</p>
-              <p className="expense">{formatRp(data.expense)}</p>
+            <div className="ui-card ui-card--flat">
+              <p className="ui-muted">Pengeluaran</p>
+              <p className="ui-expense">
+                <Currency value={data.expense} />
+              </p>
             </div>
           </section>
 
-          <section className="group-section">
-            <div className="section-head">
-              <h2>⚠ Stok Menipis</h2>
-              <Link to="/stock">Lihat</Link>
+          <section className="quick-actions">
+            <Button size="sm" onClick={() => navigate('/transactions?action=income')}>
+              + Pemasukan
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate('/transactions?action=expense')}
+            >
+              - Pengeluaran
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => navigate('/stock?action=create')}>
+              + Barang
+            </Button>
+          </section>
+
+          <section className="ui-card">
+            <div className="ui-row">
+              <h2 className="ui-section-title">Stok Menipis</h2>
+              <Link to="/stock">Lihat semua →</Link>
             </div>
             {data.lowStock.length === 0 ? (
-              <p className="muted">Tidak ada stok menipis.</p>
+              <p className="ui-muted">Tidak ada stok menipis.</p>
             ) : (
-              <ul className="list-cards">
+              <div className="ui-stack">
                 {data.lowStock.map((item) => (
-                  <li key={item.id} className="list-card">
-                    <Link to={`/stock/${item.id}`} className="list-card-link">
-                      <strong>{item.name}</strong>
-                      <p>
+                  <Link key={item.id} to={`/stock/${item.id}`} className="list-item">
+                    <div className="list-item__meta">
+                      <span className="list-item__title">{item.name}</span>
+                      <span className="ui-muted">
                         {item.quantity} {item.unit} tersisa
-                      </p>
-                    </Link>
-                  </li>
+                      </span>
+                    </div>
+                    <span className="ui-badge ui-badge--warn">Menipis</span>
+                  </Link>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
 
-          <section className="group-section">
-            <div className="section-head">
-              <h2>Transaksi Terakhir</h2>
-              <Link to="/transactions">Lihat</Link>
+          <section className="ui-card">
+            <div className="ui-row">
+              <h2 className="ui-section-title">Transaksi Terakhir</h2>
+              <Link to="/transactions">Lihat semua →</Link>
             </div>
             {data.recentTransactions.length === 0 ? (
-              <p className="muted">Belum ada transaksi.</p>
+              <EmptyState
+                title="Belum ada transaksi"
+                description="Catat pemasukan atau pengeluaran untuk mulai melihat aktivitas kas."
+                action={
+                  <Button onClick={() => navigate('/transactions?action=income')}>
+                    + Tambah Transaksi
+                  </Button>
+                }
+              />
             ) : (
-              <ul className="list-cards">
+              <div className="ui-stack">
                 {data.recentTransactions.map((txn) => (
-                  <li key={txn.id} className="list-card">
-                    <div>
-                      <strong className={txn.type === 'INCOME' ? 'income' : 'expense'}>
-                        {txn.type === 'INCOME' ? '+ ' : '- '}
-                        {txn.description || (txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran')}
-                      </strong>
-                      <p className={txn.type === 'INCOME' ? 'income' : 'expense'}>
-                        {formatRp(txn.amount)}
-                      </p>
+                  <div key={txn.id} className="list-item">
+                    <div className="list-item__meta">
+                      <span
+                        className={`list-item__title ${txn.type === 'INCOME' ? 'ui-income' : 'ui-expense'}`}
+                      >
+                        ● {txn.description || (txn.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran')}
+                      </span>
+                      <span className="ui-muted">{formatDateId(txn.transactionDate)}</span>
                     </div>
-                  </li>
+                    <Currency
+                      value={txn.amount}
+                      signed={txn.type === 'INCOME' ? 'income' : 'expense'}
+                    />
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
         </div>
-      )}
+      ) : null}
     </AppShell>
   );
 }
