@@ -1,7 +1,19 @@
 import type { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { AppError } from '../lib/errors.js';
 
 export async function errorHandler(err: Error, c: Context) {
+  if (err instanceof AppError) {
+    return c.json(
+      {
+        error: err.message,
+        code: err.code,
+        status: err.status,
+      },
+      err.status as 400 | 401 | 403 | 404 | 409 | 500,
+    );
+  }
+
   if (err instanceof HTTPException) {
     return c.json(
       {
