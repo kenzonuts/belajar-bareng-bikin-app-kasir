@@ -11,13 +11,11 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setInfo(null);
 
     if (!name.trim()) {
       setError('Nama wajib diisi.');
@@ -47,9 +45,6 @@ export function RegisterPage() {
     if (result.error) {
       setError(result.error);
       return;
-    }
-    if (result.needsEmailConfirmation) {
-      setInfo('Akun berhasil dibuat. Silakan verifikasi email sebelum masuk.');
     }
   }
 
@@ -104,11 +99,6 @@ export function RegisterPage() {
           {error ? (
             <p className="auth-error" role="alert">
               {error}
-            </p>
-          ) : null}
-          {info ? (
-            <p className="auth-info" role="status">
-              {info}
             </p>
           ) : null}
           <Button type="submit" block disabled={submitting}>

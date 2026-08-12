@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Field, TextInput, TextArea } from '@/components/ui/Field';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
-import { useToast } from '@/features/ui/ToastProvider';
+import { useToast } from '@/features/ui/useToast';
 import { apiRequest, ApiError } from '@/lib/api';
 import { formatDateId, todayIsoDate } from '@/lib/format';
 import type { Transaction } from '@/lib/types';

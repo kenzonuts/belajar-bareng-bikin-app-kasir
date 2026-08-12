@@ -9,7 +9,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Field, TextInput, TextSelect } from '@/components/ui/Field';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/features/auth/useAuth';
-import { useToast } from '@/features/ui/ToastProvider';
+import { useToast } from '@/features/ui/useToast';
 import { apiRequest, ApiError } from '@/lib/api';
 import type { Category, StockItem } from '@/lib/types';
 

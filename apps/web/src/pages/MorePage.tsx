@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AppShell } from '@/components/AppShell';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/features/auth/useAuth';
-import { useToast } from '@/features/ui/ToastProvider';
+import { useToast } from '@/features/ui/useToast';
 
 export function MorePage() {
   const { profile, user, signOut } = useAuth();
