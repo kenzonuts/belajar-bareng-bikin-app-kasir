@@ -114,3 +114,4 @@ pnpm typecheck
 pnpm format
 pnpm build
 ```
+# belajar-bareng-bikin-app-kasir
