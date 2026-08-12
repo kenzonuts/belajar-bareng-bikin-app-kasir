@@ -16,7 +16,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:check": "tsx --env-file=../../.env src/scripts/check-db.ts",
-    "db:validate": "tsx --env-file=../../.env src/scripts/validate-db.ts"
+    "db:validate": "tsx --env-file=../../.env src/scripts/validate-db.ts",
+    "db:validate-auth": "tsx --env-file=../../.env src/scripts/validate-auth.ts"
   },
   "prisma": {
     "seed": "tsx --env-file=../../.env prisma/seed.ts"

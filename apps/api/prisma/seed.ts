@@ -1,10 +1,61 @@
-import { hash } from 'bcryptjs';
 import { PrismaClient, TransactionType } from '@prisma/client';
+import { getSupabaseAdmin } from '../src/db/supabase.js';
 
 const prisma = new PrismaClient();
 
 const DEV_EMAIL = 'dev@kas-stock.local';
 const DEV_PASSWORD = 'DevPassword123!';
+const DEV_NAME = 'Developer';
+
+async function ensureAuthUser() {
+  const admin = getSupabaseAdmin();
+
+  const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (listed.error) {
+    throw listed.error;
+  }
+
+  const existing = listed.data.users.find((user) => user.email === DEV_EMAIL);
+  if (existing) {
+    await admin.auth.admin.updateUserById(existing.id, {
+      password: DEV_PASSWORD,
+      email_confirm: true,
+      user_metadata: { name: DEV_NAME },
+    });
+
+    await prisma.user.upsert({
+      where: { id: existing.id },
+      update: { name: DEV_NAME, email: DEV_EMAIL },
+      create: { id: existing.id, name: DEV_NAME, email: DEV_EMAIL },
+    });
+
+    return existing.id;
+  }
+
+  const created = await admin.auth.admin.createUser({
+    email: DEV_EMAIL,
+    password: DEV_PASSWORD,
+    email_confirm: true,
+    user_metadata: { name: DEV_NAME },
+  });
+
+  if (created.error || !created.data.user) {
+    throw created.error ?? new Error('Failed to create auth user');
+  }
+
+  // Trigger usually creates the profile; upsert as a safety net.
+  await prisma.user.upsert({
+    where: { id: created.data.user.id },
+    update: { name: DEV_NAME, email: DEV_EMAIL },
+    create: {
+      id: created.data.user.id,
+      name: DEV_NAME,
+      email: DEV_EMAIL,
+    },
+  });
+
+  return created.data.user.id;
+}
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
@@ -13,20 +64,7 @@ async function main() {
 
   console.log('[seed] starting development seed…');
 
-  const passwordHash = await hash(DEV_PASSWORD, 10);
-
-  const user = await prisma.user.upsert({
-    where: { email: DEV_EMAIL },
-    update: {
-      name: 'Developer',
-      password: passwordHash,
-    },
-    create: {
-      name: 'Developer',
-      email: DEV_EMAIL,
-      password: passwordHash,
-    },
-  });
+  const userId = await ensureAuthUser();
 
   const categoryDefs = [
     { name: 'Minuman', description: 'Minuman kemasan' },
@@ -40,7 +78,7 @@ async function main() {
     const category = await prisma.category.upsert({
       where: {
         userId_name: {
-          userId: user.id,
+          userId,
           name: def.name,
         },
       },
@@ -48,7 +86,7 @@ async function main() {
         description: def.description,
       },
       create: {
-        userId: user.id,
+        userId,
         name: def.name,
         description: def.description,
       },
@@ -92,7 +130,7 @@ async function main() {
 
   await prisma.transaction.deleteMany({
     where: {
-      userId: user.id,
+      userId,
       description: {
         in: ['Seed income — modal awal', 'Seed expense — belanja stok'],
       },
@@ -102,14 +140,14 @@ async function main() {
   await prisma.transaction.createMany({
     data: [
       {
-        userId: user.id,
+        userId,
         type: TransactionType.INCOME,
         amount: 500000,
         description: 'Seed income — modal awal',
         transactionDate: new Date('2026-08-01'),
       },
       {
-        userId: user.id,
+        userId,
         type: TransactionType.EXPENSE,
         amount: 150000,
         description: 'Seed expense — belanja stok',
@@ -119,7 +157,7 @@ async function main() {
   });
 
   console.log('[seed] done');
-  console.log(`[seed] user: ${user.email} / ${DEV_PASSWORD}`);
+  console.log(`[seed] auth user: ${DEV_EMAIL} / ${DEV_PASSWORD}`);
   console.log(`[seed] categories: ${categories.map((c) => c.name).join(', ')}`);
   console.log('[seed] stock: Aqua, Teh Pucuk, Coca Cola');
   console.log('[seed] transactions: INCOME 500000, EXPENSE 150000');
