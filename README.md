@@ -78,12 +78,31 @@ Routes:
 | `/login` | Public |
 | `/register` | Public |
 | `/dashboard` | Protected |
+| `/categories` | Protected |
+| `/stock` | Protected |
+| `/stock/:id` | Protected |
+| `/transactions` | Protected |
 
 Akun seed development:
 
 ```text
 email: dev@kas-stock.local
 password: DevPassword123!
+```
+
+## Core API
+
+Authenticated with `Authorization: Bearer <access_token>`:
+
+- `GET/POST/PATCH/DELETE /categories`
+- `GET/POST/PATCH/DELETE /stock`, `POST /stock/:id/increase|decrease`
+- `GET/POST/PATCH/DELETE /transactions`
+- `GET /dashboard`
+
+Validasi inti:
+
+```bash
+pnpm db:validate-core
 ```
 
 ## Menjalankan development
